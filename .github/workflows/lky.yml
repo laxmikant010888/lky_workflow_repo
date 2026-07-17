@@ -1,6 +1,0 @@
-name: lk_workflow
-on: 
-  workflow_dispatch
-
-jobs:
-  
