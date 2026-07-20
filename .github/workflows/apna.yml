@@ -1,0 +1,13 @@
+name: apna_workflow
+
+on:
+ workflow_dispatch: 
+
+jobs:
+  build: 
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run a one-line script
+      run: echo Hello, world!
+    
