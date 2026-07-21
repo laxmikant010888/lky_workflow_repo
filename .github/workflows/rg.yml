@@ -17,6 +17,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Check Files
+      shell: powershell
+      run: |
+        pwd
+        dir
+        tree /F
+
     - name: Azure Login
       uses: azure/login@v2
       with:
@@ -27,6 +34,9 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
+    - name: Terraform Version
+      run: terraform version
+
     - name: Terraform Init
       run: terraform init
 
@@ -34,7 +44,7 @@ jobs:
       run: terraform validate
 
     - name: Terraform Plan
-      run: terraform plan
+      run: terraform plan -no-color
 
     - name: Terraform Apply
-      run: terraform apply -auto-approve
+      run: terraform apply -auto-approve -no-color
