@@ -1,4 +1,4 @@
-name: Terraform Azure RG Deployment
+name: Terraform Azure RG Deploy
 
 on:
   workflow_dispatch:
@@ -6,6 +6,7 @@ on:
 permissions:
   id-token: write
   contents: read
+
 
 jobs:
 
@@ -15,21 +16,10 @@ jobs:
 
     steps:
 
-    # Checkout Terraform code
-    - name: Checkout Code
+    - name: Checkout
       uses: actions/checkout@v5
 
 
-    # Verify files
-    - name: List Terraform Files
-      shell: powershell
-      run: |
-        pwd
-        Get-ChildItem
-        Get-Content main.tf
-
-
-    # Azure Login using OIDC
     - name: Azure Login
       uses: azure/login@v3
       with:
@@ -38,45 +28,17 @@ jobs:
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
 
-    # Verify Azure Authentication
-    - name: Verify Azure Login
-      shell: powershell
-      run: |
-        az account show
-
-
-    # Install Terraform
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v4
 
 
-    # Terraform Version
-    - name: Terraform Version
-      run: terraform version
-
-
-    # Terraform Init
     - name: Terraform Init
       run: terraform init
 
 
-    # Terraform Validate
-    - name: Terraform Validate
-      run: terraform validate
-
-
-    # Terraform Plan
     - name: Terraform Plan
-      run: terraform plan -no-color
+      run: terraform plan
 
 
-    # Terraform Apply
     - name: Terraform Apply
-      run: terraform apply -auto-approve -no-color
-
-
-    # Verify Resource Group
-    - name: Verify Resource Group
-      shell: powershell
-      run: |
-        az group show --name rg-github-oidc-demo
+      run: terraform apply -auto-approve
