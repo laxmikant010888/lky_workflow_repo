@@ -42,6 +42,11 @@ jobs:
 
     - name: Terraform Validate
       run: terraform validate
+    - name: Terraform Show Files
+      shell: powershell
+      run: |
+        Get-ChildItem
+        Get-Content main.tf
 
     - name: Terraform Plan
       run: terraform plan -no-color
