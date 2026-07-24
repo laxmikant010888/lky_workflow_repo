@@ -1,4 +1,4 @@
-name: Terraform Azure OIDC
+name: Terraform Azure RG Deployment
 
 on:
   workflow_dispatch:
@@ -8,50 +8,75 @@ permissions:
   contents: read
 
 jobs:
+
   terraform:
 
     runs-on: self-hosted
 
     steps:
 
-    - name: Checkout
-      uses: actions/checkout@v4
+    # Checkout Terraform code
+    - name: Checkout Code
+      uses: actions/checkout@v5
 
-    - name: Check Files
+
+    # Verify files
+    - name: List Terraform Files
       shell: powershell
       run: |
         pwd
-        dir
-        tree /F
+        Get-ChildItem
+        Get-Content main.tf
 
+
+    # Azure Login using OIDC
     - name: Azure Login
-      uses: azure/login@v2
+      uses: azure/login@v3
       with:
         client-id: ${{ secrets.AZURE_CLIENT_ID }}
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
 
+    # Verify Azure Authentication
+    - name: Verify Azure Login
+      shell: powershell
+      run: |
+        az account show
+
+
+    # Install Terraform
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v4
+
+
+    # Terraform Version
     - name: Terraform Version
       run: terraform version
 
+
+    # Terraform Init
     - name: Terraform Init
       run: terraform init
 
+
+    # Terraform Validate
     - name: Terraform Validate
       run: terraform validate
-    - name: Terraform Show Files
-      shell: powershell
-      run: |
-        Get-ChildItem
-        Get-Content main.tf
 
+
+    # Terraform Plan
     - name: Terraform Plan
       run: terraform plan -no-color
 
+
+    # Terraform Apply
     - name: Terraform Apply
       run: terraform apply -auto-approve -no-color
-    - name: Terraform State List
-      run: terraform state list
+
+
+    # Verify Resource Group
+    - name: Verify Resource Group
+      shell: powershell
+      run: |
+        az group show --name rg-github-oidc-demo
