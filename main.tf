@@ -1,18 +1,16 @@
 terraform {
-  required_version = ">= 1.6"
-
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 4.0"
+      version = "4.80.0"
     }
   }
 }
 
 provider "azurerm" {
   features {}
-
-  use_oidc = true
+subscription_id = "a859689a-347e-41e4-8e6b-b4c1f510"
+  
 }
 
 resource "azurerm_resource_group" "rg" {
