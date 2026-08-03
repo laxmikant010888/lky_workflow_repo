@@ -9,12 +9,11 @@ terraform {
 
 provider "azurerm" {
   features {}
+  use_oidc = true
 }
-
 
 resource "azurerm_resource_group" "rg" {
   name     = "rg-selfhosted-demo"
   location = "Central India"
 }
-
 
