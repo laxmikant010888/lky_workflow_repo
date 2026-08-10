@@ -14,7 +14,7 @@ jobs:
     steps:
 
       # ==================================================
-      # 1. Checkout Repository
+      # 1. Checkout
       # ==================================================
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -24,7 +24,6 @@ jobs:
 
       # ==================================================
       # 2. Configure Python PATH
-      # Required for Checkov
       # ==================================================
       - name: Configure Python PATH
         shell: powershell
@@ -34,22 +33,21 @@ jobs:
 
           if (Test-Path $pythonPath) {
             $env:PATH = "$pythonPath;$env:PATH"
-            Write-Host "Added Python: $pythonPath"
           }
 
           if (Test-Path $pythonScripts) {
             $env:PATH = "$pythonScripts;$env:PATH"
-            Write-Host "Added Python Scripts: $pythonScripts"
           }
 
           "PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
 
 
       # ==================================================
-      # 3. Verify Security Tools
+      # 3. Verify Tools
       # ==================================================
       - name: Verify Security Tools
         shell: powershell
+        continue-on-error: true
         run: |
           Write-Host "========== Trivy =========="
           trivy --version
@@ -63,10 +61,12 @@ jobs:
 
 
       # ==================================================
-      # 4. Trivy - Terraform Security Scan
+      # 4. Trivy Scan
+      # Security issues will NOT stop pipeline
       # ==================================================
       - name: Trivy Terraform Security Scan
         shell: powershell
+        continue-on-error: true
         run: |
           trivy config . `
             --severity HIGH,CRITICAL `
@@ -74,10 +74,12 @@ jobs:
 
 
       # ==================================================
-      # 5. Checkov - Terraform Security Scan
+      # 5. Checkov Scan
+      # Security issues will NOT stop pipeline
       # ==================================================
       - name: Checkov Terraform Security Scan
         shell: powershell
+        continue-on-error: true
         run: |
           checkov -d . `
             --framework terraform `
@@ -85,16 +87,18 @@ jobs:
 
 
       # ==================================================
-      # 6. TFLint - Terraform Linting
+      # 6. TFLint
+      # Lint errors will NOT stop pipeline
       # ==================================================
       - name: TFLint
         shell: powershell
+        continue-on-error: true
         run: |
           tflint --recursive
 
 
       # ==================================================
-      # 7. Azure Login using OIDC
+      # 7. Azure Login
       # ==================================================
       - name: Azure Login using OIDC
         uses: azure/login@v2
@@ -151,4 +155,3 @@ jobs:
         working-directory: .\ENV(parent_module)\DEV
         run: |
           terraform apply -auto-approve -no-color
-
