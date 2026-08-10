@@ -1,3 +1,4 @@
+```yaml
 name: Landing Zone Deployment
 
 on:
@@ -13,19 +14,61 @@ jobs:
 
     steps:
 
-      # --------------------------------------------------
+      # ==================================================
       # 1. Checkout Repository
-      # --------------------------------------------------
+      # ==================================================
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
 
-      # --------------------------------------------------
-      # 2. GitGuardian - Secret Scanning
-      # Windows Self-Hosted Runner
-      # --------------------------------------------------
+      # ==================================================
+      # 2. Add Python Scripts + Common Tool Paths
+      # ==================================================
+      - name: Configure Tool PATH
+        shell: powershell
+        run: |
+          $paths = @(
+            "$env:LOCALAPPDATA\Programs\Python\Python313\Scripts",
+            "$env:APPDATA\Python\Python313\Scripts",
+            "$env:USERPROFILE\AppData\Roaming\Python\Python313\Scripts",
+            "C:\Program Files\TFLint",
+            "C:\ProgramData\chocolatey\bin"
+          )
+
+          foreach ($path in $paths) {
+            if (Test-Path $path) {
+              $env:PATH = "$path;$env:PATH"
+              Write-Host "Added to PATH: $path"
+            }
+          }
+
+          "PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+
+
+      # ==================================================
+      # 3. Verify Security Tools
+      # ==================================================
+      - name: Verify Security Tools
+        shell: powershell
+        run: |
+          Write-Host "Checking GitGuardian..."
+          ggshield --version
+
+          Write-Host "Checking Trivy..."
+          trivy --version
+
+          Write-Host "Checking Checkov..."
+          checkov --version
+
+          Write-Host "Checking TFLint..."
+          tflint --version
+
+
+      # ==================================================
+      # 4. GitGuardian - Secret Scanning
+      # ==================================================
       - name: GitGuardian Secret Scan
         shell: powershell
         env:
@@ -34,39 +77,40 @@ jobs:
           ggshield secret scan ci
 
 
-      # --------------------------------------------------
-      # 3. Trivy - Terraform Security Scan
-      # Windows Self-Hosted Runner
-      # --------------------------------------------------
+      # ==================================================
+      # 5. Trivy - Terraform Security Scan
+      # ==================================================
       - name: Trivy Terraform Security Scan
         shell: powershell
         run: |
-          trivy config . --severity HIGH,CRITICAL --exit-code 1
+          trivy config . `
+            --severity HIGH,CRITICAL `
+            --exit-code 1
 
 
-      # --------------------------------------------------
-      # 4. Checkov - Terraform Security Scan
-      # Windows Self-Hosted Runner
-      # --------------------------------------------------
+      # ==================================================
+      # 6. Checkov - Terraform Security Scan
+      # ==================================================
       - name: Checkov Terraform Security Scan
         shell: powershell
         run: |
-          checkov -d . --framework terraform --quiet
+          checkov -d . `
+            --framework terraform `
+            --quiet
 
 
-      # --------------------------------------------------
-      # 5. TFLint - Terraform Linting
-      # Windows Self-Hosted Runner
-      # --------------------------------------------------
+      # ==================================================
+      # 7. TFLint - Terraform Linting
+      # ==================================================
       - name: TFLint
         shell: powershell
         run: |
           tflint --recursive
 
 
-      # --------------------------------------------------
-      # 6. Azure Login using OIDC
-      # --------------------------------------------------
+      # ==================================================
+      # 8. Azure Login using OIDC
+      # ==================================================
       - name: Azure Login using OIDC
         uses: azure/login@v2
         with:
@@ -75,9 +119,18 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
 
-      # --------------------------------------------------
-      # 7. Terraform Init
-      # --------------------------------------------------
+      # ==================================================
+      # 9. Verify Azure Login
+      # ==================================================
+      - name: Verify Azure Login
+        shell: powershell
+        run: |
+          az account show
+
+
+      # ==================================================
+      # 10. Terraform Init
+      # ==================================================
       - name: Terraform Init
         shell: powershell
         working-directory: .\ENV(parent_module)\DEV
@@ -85,9 +138,9 @@ jobs:
           terraform init -no-color
 
 
-      # --------------------------------------------------
-      # 8. Terraform Validate
-      # --------------------------------------------------
+      # ==================================================
+      # 11. Terraform Validate
+      # ==================================================
       - name: Terraform Validate
         shell: powershell
         working-directory: .\ENV(parent_module)\DEV
@@ -95,9 +148,9 @@ jobs:
           terraform validate -no-color
 
 
-      # --------------------------------------------------
-      # 9. Terraform Plan
-      # --------------------------------------------------
+      # ==================================================
+      # 12. Terraform Plan
+      # ==================================================
       - name: Terraform Plan
         shell: powershell
         working-directory: .\ENV(parent_module)\DEV
@@ -105,11 +158,12 @@ jobs:
           terraform plan -no-color
 
 
-      # --------------------------------------------------
-      # 10. Terraform Apply
-      # --------------------------------------------------
+      # ==================================================
+      # 13. Terraform Apply
+      # ==================================================
       - name: Terraform Apply
         shell: powershell
         working-directory: .\ENV(parent_module)\DEV
         run: |
           terraform apply -auto-approve -no-color
+```
