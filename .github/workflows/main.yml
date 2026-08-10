@@ -1,4 +1,3 @@
-```yaml
 name: Landing Zone Deployment
 
 on:
@@ -166,4 +165,3 @@ jobs:
         working-directory: .\ENV(parent_module)\DEV
         run: |
           terraform apply -auto-approve -no-color
-```
