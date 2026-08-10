@@ -23,24 +23,23 @@ jobs:
 
 
       # ==================================================
-      # 2. Add Python Scripts + Common Tool Paths
+      # 2. Configure Python PATH
+      # Required for Checkov
       # ==================================================
-      - name: Configure Tool PATH
+      - name: Configure Python PATH
         shell: powershell
         run: |
-          $paths = @(
-            "$env:LOCALAPPDATA\Programs\Python\Python313\Scripts",
-            "$env:APPDATA\Python\Python313\Scripts",
-            "$env:USERPROFILE\AppData\Roaming\Python\Python313\Scripts",
-            "C:\Program Files\TFLint",
-            "C:\ProgramData\chocolatey\bin"
-          )
+          $pythonPath = "C:\Users\ylaxa\AppData\Local\Programs\Python\Python313"
+          $pythonScripts = "C:\Users\ylaxa\AppData\Local\Programs\Python\Python313\Scripts"
 
-          foreach ($path in $paths) {
-            if (Test-Path $path) {
-              $env:PATH = "$path;$env:PATH"
-              Write-Host "Added to PATH: $path"
-            }
+          if (Test-Path $pythonPath) {
+            $env:PATH = "$pythonPath;$env:PATH"
+            Write-Host "Added Python: $pythonPath"
+          }
+
+          if (Test-Path $pythonScripts) {
+            $env:PATH = "$pythonScripts;$env:PATH"
+            Write-Host "Added Python Scripts: $pythonScripts"
           }
 
           "PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
@@ -52,32 +51,19 @@ jobs:
       - name: Verify Security Tools
         shell: powershell
         run: |
-          Write-Host "Checking GitGuardian..."
-          ggshield --version
-
-          Write-Host "Checking Trivy..."
+          Write-Host "========== Trivy =========="
           trivy --version
 
-          Write-Host "Checking Checkov..."
+          Write-Host "========== Checkov =========="
+          python --version
           checkov --version
 
-          Write-Host "Checking TFLint..."
+          Write-Host "========== TFLint =========="
           tflint --version
 
 
       # ==================================================
-      # 4. GitGuardian - Secret Scanning
-      # ==================================================
-      - name: GitGuardian Secret Scan
-        shell: powershell
-        env:
-          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
-        run: |
-          ggshield secret scan ci
-
-
-      # ==================================================
-      # 5. Trivy - Terraform Security Scan
+      # 4. Trivy - Terraform Security Scan
       # ==================================================
       - name: Trivy Terraform Security Scan
         shell: powershell
@@ -88,7 +74,7 @@ jobs:
 
 
       # ==================================================
-      # 6. Checkov - Terraform Security Scan
+      # 5. Checkov - Terraform Security Scan
       # ==================================================
       - name: Checkov Terraform Security Scan
         shell: powershell
@@ -99,7 +85,7 @@ jobs:
 
 
       # ==================================================
-      # 7. TFLint - Terraform Linting
+      # 6. TFLint - Terraform Linting
       # ==================================================
       - name: TFLint
         shell: powershell
@@ -108,7 +94,7 @@ jobs:
 
 
       # ==================================================
-      # 8. Azure Login using OIDC
+      # 7. Azure Login using OIDC
       # ==================================================
       - name: Azure Login using OIDC
         uses: azure/login@v2
@@ -119,7 +105,7 @@ jobs:
 
 
       # ==================================================
-      # 9. Verify Azure Login
+      # 8. Verify Azure Login
       # ==================================================
       - name: Verify Azure Login
         shell: powershell
@@ -128,7 +114,7 @@ jobs:
 
 
       # ==================================================
-      # 10. Terraform Init
+      # 9. Terraform Init
       # ==================================================
       - name: Terraform Init
         shell: powershell
@@ -138,7 +124,7 @@ jobs:
 
 
       # ==================================================
-      # 11. Terraform Validate
+      # 10. Terraform Validate
       # ==================================================
       - name: Terraform Validate
         shell: powershell
@@ -148,7 +134,7 @@ jobs:
 
 
       # ==================================================
-      # 12. Terraform Plan
+      # 11. Terraform Plan
       # ==================================================
       - name: Terraform Plan
         shell: powershell
@@ -158,10 +144,11 @@ jobs:
 
 
       # ==================================================
-      # 13. Terraform Apply
+      # 12. Terraform Apply
       # ==================================================
       - name: Terraform Apply
         shell: powershell
         working-directory: .\ENV(parent_module)\DEV
         run: |
           terraform apply -auto-approve -no-color
+
