@@ -1,3 +1,0 @@
-variable "asg-child" {
-  
-}

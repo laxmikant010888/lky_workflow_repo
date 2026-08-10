@@ -1,3 +1,0 @@
-variable "storage-account-child" {
-  
-}
