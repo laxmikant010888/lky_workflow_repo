@@ -14,7 +14,7 @@ jobs:
     steps:
 
       # --------------------------------------------------
-      # 1. Checkout
+      # 1. Checkout Repository
       # --------------------------------------------------
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -24,51 +24,48 @@ jobs:
 
       # --------------------------------------------------
       # 2. GitGuardian - Secret Scanning
+      # Windows Self-Hosted Runner
       # --------------------------------------------------
       - name: GitGuardian Secret Scan
-        uses: GitGuardian/ggshield/actions/secret@v1.45.0
+        shell: powershell
         env:
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+        run: |
+          ggshield secret scan ci
 
 
       # --------------------------------------------------
       # 3. Trivy - Terraform Security Scan
+      # Windows Self-Hosted Runner
       # --------------------------------------------------
       - name: Trivy Terraform Security Scan
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: config
-          scan-ref: .
-          severity: HIGH,CRITICAL
-          exit-code: 1
+        shell: powershell
+        run: |
+          trivy config . --severity HIGH,CRITICAL --exit-code 1
 
 
       # --------------------------------------------------
-      # 4. Checkov - IaC Security Scan
+      # 4. Checkov - Terraform Security Scan
+      # Windows Self-Hosted Runner
       # --------------------------------------------------
       - name: Checkov Terraform Security Scan
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: .
-          framework: terraform
-          quiet: false
-          soft_fail: false
+        shell: powershell
+        run: |
+          checkov -d . --framework terraform --quiet
 
 
       # --------------------------------------------------
       # 5. TFLint - Terraform Linting
+      # Windows Self-Hosted Runner
       # --------------------------------------------------
-      - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v6
-        with:
-          tflint_version: latest
-
       - name: TFLint
-        run: tflint --recursive
+        shell: powershell
+        run: |
+          tflint --recursive
 
 
       # --------------------------------------------------
-      # 6. Azure Login
+      # 6. Azure Login using OIDC
       # --------------------------------------------------
       - name: Azure Login using OIDC
         uses: azure/login@v2
@@ -82,26 +79,37 @@ jobs:
       # 7. Terraform Init
       # --------------------------------------------------
       - name: Terraform Init
-        run: terraform init -no-color
+        shell: powershell
+        working-directory: .\ENV(parent_module)\DEV
+        run: |
+          terraform init -no-color
 
 
       # --------------------------------------------------
       # 8. Terraform Validate
       # --------------------------------------------------
       - name: Terraform Validate
-        run: terraform validate -no-color
+        shell: powershell
+        working-directory: .\ENV(parent_module)\DEV
+        run: |
+          terraform validate -no-color
 
 
       # --------------------------------------------------
       # 9. Terraform Plan
       # --------------------------------------------------
       - name: Terraform Plan
-        run: terraform plan -no-color
+        shell: powershell
+        working-directory: .\ENV(parent_module)\DEV
+        run: |
+          terraform plan -no-color
 
 
       # --------------------------------------------------
       # 10. Terraform Apply
       # --------------------------------------------------
       - name: Terraform Apply
-        run: terraform apply -auto-approve -no-color
-
+        shell: powershell
+        working-directory: .\ENV(parent_module)\DEV
+        run: |
+          terraform apply -auto-approve -no-color
