@@ -8,23 +8,28 @@ permissions:
   contents: read
 
 jobs:
-  terraform-security-scan:
+
+  # ==================================================
+  # STAGE 1: SECURITY SCAN
+  # ==================================================
+  security-scan:
+    name: Security Scan
     runs-on: self-hosted
 
     steps:
 
-      # ==================================================
-      # 1. Checkout
-      # ==================================================
+      # ----------------------------------------------
+      # Checkout
+      # ----------------------------------------------
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
 
-      # ==================================================
-      # 2. Configure Python PATH
-      # ==================================================
+      # ----------------------------------------------
+      # Configure Python PATH
+      # ----------------------------------------------
       - name: Configure Python PATH
         shell: powershell
         run: |
@@ -39,16 +44,19 @@ jobs:
             $env:PATH = "$pythonScripts;$env:PATH"
           }
 
-          "PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+          "PATH=$env:PATH" | Out-File `
+            -FilePath $env:GITHUB_ENV `
+            -Encoding utf8
 
 
-      # ==================================================
-      # 3. Verify Tools
-      # ==================================================
+      # ----------------------------------------------
+      # Verify Security Tools
+      # ----------------------------------------------
       - name: Verify Security Tools
         shell: powershell
         continue-on-error: true
         run: |
+
           Write-Host "========== Trivy =========="
           trivy --version
 
@@ -60,10 +68,9 @@ jobs:
           tflint --version
 
 
-      # ==================================================
-      # 4. Trivy Scan
-      # Security issues will NOT stop pipeline
-      # ==================================================
+      # ----------------------------------------------
+      # Trivy
+      # ----------------------------------------------
       - name: Trivy Terraform Security Scan
         shell: powershell
         continue-on-error: true
@@ -73,10 +80,9 @@ jobs:
             --exit-code 1
 
 
-      # ==================================================
-      # 5. Checkov Scan
-      # Security issues will NOT stop pipeline
-      # ==================================================
+      # ----------------------------------------------
+      # Checkov
+      # ----------------------------------------------
       - name: Checkov Terraform Security Scan
         shell: powershell
         continue-on-error: true
@@ -86,10 +92,9 @@ jobs:
             --quiet
 
 
-      # ==================================================
-      # 6. TFLint
-      # Lint errors will NOT stop pipeline
-      # ==================================================
+      # ----------------------------------------------
+      # TFLint
+      # ----------------------------------------------
       - name: TFLint
         shell: powershell
         continue-on-error: true
@@ -97,9 +102,28 @@ jobs:
           tflint --recursive
 
 
-      # ==================================================
-      # 7. Azure Login
-      # ==================================================
+  # ==================================================
+  # STAGE 2: TERRAFORM VALIDATE
+  # ==================================================
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: self-hosted
+
+    needs:
+      - security-scan
+
+    steps:
+
+      # ----------------------------------------------
+      # Checkout
+      # ----------------------------------------------
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+
+      # ----------------------------------------------
+      # Azure Login
+      # ----------------------------------------------
       - name: Azure Login using OIDC
         uses: azure/login@v2
         with:
@@ -108,18 +132,18 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
 
-      # ==================================================
-      # 8. Verify Azure Login
-      # ==================================================
+      # ----------------------------------------------
+      # Verify Azure Login
+      # ----------------------------------------------
       - name: Verify Azure Login
         shell: powershell
         run: |
           az account show
 
 
-      # ==================================================
-      # 9. Terraform Init
-      # ==================================================
+      # ----------------------------------------------
+      # Terraform Init
+      # ----------------------------------------------
       - name: Terraform Init
         shell: powershell
         working-directory: .\ENV(parent_module)\DEV
@@ -127,9 +151,9 @@ jobs:
           terraform init -no-color
 
 
-      # ==================================================
-      # 10. Terraform Validate
-      # ==================================================
+      # ----------------------------------------------
+      # Terraform Validate
+      # ----------------------------------------------
       - name: Terraform Validate
         shell: powershell
         working-directory: .\ENV(parent_module)\DEV
@@ -137,9 +161,49 @@ jobs:
           terraform validate -no-color
 
 
-      # ==================================================
-      # 11. Terraform Plan
-      # ==================================================
+  # ==================================================
+  # STAGE 3: TERRAFORM PLAN
+  # ==================================================
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: self-hosted
+
+    needs:
+      - terraform-validate
+
+    steps:
+
+      # ----------------------------------------------
+      # Checkout
+      # ----------------------------------------------
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+
+      # ----------------------------------------------
+      # Azure Login
+      # ----------------------------------------------
+      - name: Azure Login using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+
+      # ----------------------------------------------
+      # Terraform Init
+      # ----------------------------------------------
+      - name: Terraform Init
+        shell: powershell
+        working-directory: .\ENV(parent_module)\DEV
+        run: |
+          terraform init -no-color
+
+
+      # ----------------------------------------------
+      # Terraform Plan
+      # ----------------------------------------------
       - name: Terraform Plan
         shell: powershell
         working-directory: .\ENV(parent_module)\DEV
@@ -147,9 +211,56 @@ jobs:
           terraform plan -no-color
 
 
-      # ==================================================
-      # 12. Terraform Apply
-      # ==================================================
+  # ==================================================
+  # STAGE 4: TERRAFORM APPLY
+  # ==================================================
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: self-hosted
+
+    needs:
+      - terraform-plan
+
+    # ----------------------------------------------
+    # Manual Approval
+    # Configure approval in GitHub Environment
+    # ----------------------------------------------
+    environment:
+      name: DEV
+
+    steps:
+
+      # ----------------------------------------------
+      # Checkout
+      # ----------------------------------------------
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+
+      # ----------------------------------------------
+      # Azure Login
+      # ----------------------------------------------
+      - name: Azure Login using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+
+      # ----------------------------------------------
+      # Terraform Init
+      # ----------------------------------------------
+      - name: Terraform Init
+        shell: powershell
+        working-directory: .\ENV(parent_module)\DEV
+        run: |
+          terraform init -no-color
+
+
+      # ----------------------------------------------
+      # Terraform Apply
+      # ----------------------------------------------
       - name: Terraform Apply
         shell: powershell
         working-directory: .\ENV(parent_module)\DEV
